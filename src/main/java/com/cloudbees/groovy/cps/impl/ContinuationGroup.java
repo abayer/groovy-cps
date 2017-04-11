@@ -1,8 +1,10 @@
 package com.cloudbees.groovy.cps.impl;
 
 import com.cloudbees.groovy.cps.Block;
+import com.cloudbees.groovy.cps.CategorySupport;
 import com.cloudbees.groovy.cps.Continuable;
 import com.cloudbees.groovy.cps.Continuation;
+import com.cloudbees.groovy.cps.CpsDefaultGroovyMethods;
 import com.cloudbees.groovy.cps.Env;
 import com.cloudbees.groovy.cps.Next;
 import com.cloudbees.groovy.cps.sandbox.Invoker;
@@ -15,6 +17,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.cloudbees.groovy.cps.impl.SourceLocation.*;
+
+import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -48,6 +52,7 @@ abstract class ContinuationGroup implements Serializable {
      * Evaluates a function (possibly a workflow function), then pass the result to the given continuation.
      */
     protected Next methodCall(final Env e, final SourceLocation loc, final Continuation k, final CallSiteBlock callSite, final Object receiver, final String methodName, final Object... args) {
+/*
         try {
             Caller.record(receiver,methodName,args);
 
@@ -68,6 +73,30 @@ abstract class ContinuationGroup implements Serializable {
         } catch (Throwable t) {
             return throwException(e, t, loc, new ReferenceStackTrace());
         }
+        */
+        return CategorySupport.use(CpsDefaultGroovyMethods.class, new Callable<Next>() {
+            public Next call() {
+                try {
+                    Caller.record(receiver,methodName,args);
+                    Invoker inv = e.getInvoker().contextualize(callSite);
+                    // TODO: spread and safe
+                    Object v;
+                    if (receiver instanceof Super) {
+                        Super s = (Super) receiver;
+                        v = inv.superCall(s.senderType, s.receiver, methodName, args);
+                    } else {
+                        v = inv.methodCall(receiver, methodName, args);
+                    }
+                    // if this was a normal function, the method had just executed synchronously
+                    return k.receive(v);
+                } catch (CpsCallableInvocation inv) {
+                    return inv.invoke(e, loc, k);
+                } catch (Throwable t) {
+                    return throwException(e, t, loc, new ReferenceStackTrace());
+                }
+            }
+        });
+
 
 /*
     Because of GROOVY-6263, if we use category, CpsTransformer fails wherever it calls its private method
