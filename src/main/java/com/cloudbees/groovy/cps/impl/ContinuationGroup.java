@@ -52,39 +52,17 @@ abstract class ContinuationGroup implements Serializable {
      * Evaluates a function (possibly a workflow function), then pass the result to the given continuation.
      */
     protected Next methodCall(final Env e, final SourceLocation loc, final Continuation k, final CallSiteBlock callSite, final Object receiver, final String methodName, final Object... args) {
-/*
-        try {
-            Caller.record(receiver,methodName,args);
-
-            Invoker inv = e.getInvoker().contextualize(callSite);
-            Object v;
-
-            if (receiver instanceof Super) {
-                Super s = (Super) receiver;
-                v = inv.superCall(s.senderType, s.receiver, methodName, args);
-            } else {
-                // TODO: spread
-                v = inv.methodCall(receiver, methodName, args);
-            }
-            // if this was a normal function, the method had just executed synchronously
-            return k.receive(v);
-        } catch (CpsCallableInvocation inv) {
-            return inv.invoke(e, loc, k);
-        } catch (Throwable t) {
-            return throwException(e, t, loc, new ReferenceStackTrace());
-        }
-        */
         return CategorySupport.use(CpsDefaultGroovyMethods.class, new Callable<Next>() {
             public Next call() {
                 try {
                     Caller.record(receiver,methodName,args);
                     Invoker inv = e.getInvoker().contextualize(callSite);
-                    // TODO: spread and safe
                     Object v;
                     if (receiver instanceof Super) {
                         Super s = (Super) receiver;
                         v = inv.superCall(s.senderType, s.receiver, methodName, args);
                     } else {
+                        // TODO: spread
                         v = inv.methodCall(receiver, methodName, args);
                     }
                     // if this was a normal function, the method had just executed synchronously
@@ -96,34 +74,6 @@ abstract class ContinuationGroup implements Serializable {
                 }
             }
         });
-
-
-/*
-    Because of GROOVY-6263, if we use category, CpsTransformer fails wherever it calls its private method
-    when 'this' is SandboxCpsTransformer. A similar problem will likely happen anywhere we call Groovy code.
-
-    So instead of using category, insert methods into MetaClass, which is what Groovy runtime does
-    for its builtin DefaultGroovyMethods.
-
-    This affects every Groovy code execution in the same JVM, which is too wide, but
-
-
-        return CategorySupport.use(CpsDefaultGroovyMethods.class, new Callable<Next>() {
-            public Next call() {
-                try {
-                    Caller.record(receiver,methodName,args);
-                    // TODO: spread and safe
-                    Object v = e.getInvoker().methodCall(receiver, methodName, args);
-                    // if this was a normal function, the method had just executed synchronously
-                    return k.receive(v);
-                } catch (CpsCallableInvocation inv) {
-                    return inv.invoke(e, loc, k);
-                } catch (Throwable t) {
-                    return throwException(e, t, loc, new ReferenceStackTrace());
-                }
-            }
-        });
-*/
     }
 
     static {
