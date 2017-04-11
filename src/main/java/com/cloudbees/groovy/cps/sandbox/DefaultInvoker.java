@@ -26,7 +26,7 @@ public class DefaultInvoker implements Invoker {
 
     public Object superCall(Class methodType, Object receiver, String method, Object[] args) throws Throwable {
         MetaClass mc = InvokerHelper.getMetaClass(receiver.getClass());
-        return mc.invokeMethod(methodType.getSuperclass(), receiver.getClass().getSuperclass().cast(receiver), method, args, true, true);
+        return mc.invokeMethod(methodType, receiver, method, args, true, true);
     }
 
     public Object getProperty(Object lhs, String name) throws Throwable {
